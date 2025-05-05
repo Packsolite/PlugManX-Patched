@@ -41,6 +41,7 @@ import org.bukkit.command.SimpleCommandMap;
 import org.bukkit.event.Event;
 import org.bukkit.plugin.*;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -57,6 +58,7 @@ import java.util.stream.Collectors;
  * @author rylinaux
  */
 public class BukkitPluginManager implements PluginManager {
+	private static final org.slf4j.Logger log = LoggerFactory.getLogger(BukkitPluginManager.class);
 	//TODO: Clean this class up, I don't like how it currently looks
 
 	private final Class<?> pluginClassLoader;
@@ -491,9 +493,42 @@ public class BukkitPluginManager implements PluginManager {
 	@Override
 	public void reload(Plugin plugin) {
 		if (plugin != null) {
-			this.unload(plugin);
-			this.load(plugin);
+			for (String unloaded : this.unloadRecursively(plugin).reversed()) {
+				this.load(unloaded);
+			}
 		}
+	}
+
+	private List<String> unloadRecursively(Plugin plugin) {
+		List<String> unloaded = new ArrayList<>();
+		for (Plugin otherPlugin : Bukkit.getPluginManager().getPlugins()) {
+			boolean isDependency = isDependOrSoftDepend(otherPlugin, plugin);
+			if (isDependency) {
+				if (isDependOrSoftDepend(plugin, otherPlugin)) {
+					Logger.getLogger(BukkitPluginManager.class.getName()).severe("Plugin " + plugin.getName() + " and " + otherPlugin.getName() + " depend on each other. This breaks recursive reloading.");
+					continue;
+				}
+				Logger.getLogger(BukkitPluginManager.class.getName()).severe("Reloading " + otherPlugin.getName() + " as it depends on " + otherPlugin.getName() + ".");
+				unloaded.addAll(unloadRecursively(otherPlugin));
+			}
+		}
+		unload(plugin);
+		unloaded.add(plugin.getName());
+		return unloaded;
+	}
+
+	private boolean isDependOrSoftDepend(Plugin plugin, Plugin onPlugin) {
+		for (String depend : plugin.getDescription().getDepend()) {
+			if (onPlugin.getName().equalsIgnoreCase(depend)) {
+				return true;
+			}
+		}
+		for (String soft : plugin.getDescription().getSoftDepend()) {
+			if (onPlugin.getName().equalsIgnoreCase(soft)) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/**
