@@ -388,9 +388,9 @@ public class BukkitPluginManager implements PluginManager {
 			field.setAccessible(true);
 			Object pluginOfPcl = field.get(target.getClass().getClassLoader());
 			if (pluginOfPcl == null) {
-				Logger.getLogger(BukkitPluginManager.class.getName()).severe("WARNING: The plugin inside the PluginClassLoader of the class of the plugin that was just loaded is null!");
-				Logger.getLogger(BukkitPluginManager.class.getName()).severe("This most likely means that reloading has failed.");
-				Logger.getLogger(BukkitPluginManager.class.getName()).severe("Trying to mitigate it by overwriting the field...");
+				Bukkit.broadcastMessage("§eWARNING: §cThe plugin inside the PluginClassLoader of the class of the plugin that was just loaded is null!");
+				Bukkit.broadcastMessage("§cThis most likely means that reloading has failed.");
+				Bukkit.broadcastMessage("§cTrying to mitigate it by injecting the plugin field manually...");
 				field.set(target.getClass().getClassLoader(), target);
 			}
 		} catch (ReflectiveOperationException e) {
