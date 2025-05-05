@@ -386,10 +386,14 @@ public class BukkitPluginManager implements PluginManager {
 		try {
 			Field field = target.getClass().getClassLoader().getClass().getDeclaredField("plugin");
 			field.setAccessible(true);
-			field.set(target.getClass().getClassLoader(), target);
-		} catch (IllegalAccessException e) {
-			throw new RuntimeException(e);
-		} catch (NoSuchFieldException e) {
+			Object pluginOfPcl = field.get(target.getClass().getClassLoader());
+			if (pluginOfPcl == null) {
+				Logger.getLogger(BukkitPluginManager.class.getName()).severe("WARNING: The plugin inside the PluginClassLoader of the class of the plugin that was just loaded is null!");
+				Logger.getLogger(BukkitPluginManager.class.getName()).severe("This most likely means that reloading has failed.");
+				Logger.getLogger(BukkitPluginManager.class.getName()).severe("Trying to mitigate it by overwriting the field...");
+				field.set(target.getClass().getClassLoader(), target);
+			}
+		} catch (ReflectiveOperationException e) {
 			throw new RuntimeException(e);
 		}
 
@@ -508,7 +512,7 @@ public class BukkitPluginManager implements PluginManager {
 					Logger.getLogger(BukkitPluginManager.class.getName()).severe("Plugin " + plugin.getName() + " and " + otherPlugin.getName() + " depend on each other. This breaks recursive reloading.");
 					continue;
 				}
-				Logger.getLogger(BukkitPluginManager.class.getName()).severe("Reloading " + otherPlugin.getName() + " as it depends on " + otherPlugin.getName() + ".");
+				Logger.getLogger(BukkitPluginManager.class.getName()).warning("Reloading " + otherPlugin.getName() + " as it depends on " + otherPlugin.getName() + ".");
 				unloaded.addAll(unloadRecursively(otherPlugin));
 			}
 		}
